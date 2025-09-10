@@ -21,6 +21,20 @@ public:
         return {TokenType::END_OF_FILE, ""};
     }
 };
+
+class Parser {
+private:
+    Lexer &lexer;
+    Token current;
+public:
+    Parser(Lexer &lex) : lexer(lex) {
+        current = lexer.getNextToken();
+    }
+    AST* parse() {
+        return nullptr;
+    }
+};
+
 class Interpreter {
 public:
     int visit(AST* node) {
