@@ -2,58 +2,91 @@
 #include <string>
 using namespace std;
 
-enum class TokenType {
-    NUMBER, PLUS, MINUS, MUL, DIV,END_OF_FILE
+enum class TokenType
+{
+    NUMBER,
+    PLUS,
+    MINUS,
+    MUL,
+    DIV,
+    END_OF_FILE
 };
 
-struct Token {
+struct Token
+{
     TokenType type;
     string value;
 };
 
-class Lexer {
+class Lexer
+{
 private:
     string src;
     int pos;
+
 public:
     Lexer(const string &source) : src(source), pos(0) {}
-    Token getNextToken() {
+    Token getNextToken()
+    {
         return {TokenType::END_OF_FILE, ""};
     }
 };
 
-class AST {
+class AST
+{
 public:
     virtual ~AST() = default;
 };
 
-class NumberNode : public AST {
+class NumberNode : public AST
+{
 public:
     int value;
     NumberNode(int v) : value(v) {}
 };
 
-
-class Parser {
+class Parser
+{
 private:
     Lexer &lexer;
     Token current;
+
 public:
-    Parser(Lexer &lex) : lexer(lex) {
+    Parser(Lexer &lex) : lexer(lex)
+    {
         current = lexer.getNextToken();
     }
-    AST* parse() {
+    AST *parse()
+    {
         return nullptr;
     }
 };
 
-class Interpreter {
+class Interpreter
+{
 public:
-    int visit(AST* node) {
-        if (node == nullptr) return 0;
-        if (auto num = dynamic_cast<NumberNode*>(node)) {
+    int visit(AST *node)
+    {
+        if (node == nullptr)
+            return 0;
+        if (auto num = dynamic_cast<NumberNode *>(node))
+        {
             return num->value;
         }
         return 0;
     }
 };
+int main()
+{
+    string s;
+    cout << "Enter an expression";
+    getline(cin, s);
+    Lexer lexer(s);
+    Parser parser(lexer);
+    AST *tree = parser.parse();
+
+    Interpreter interp;
+    int result = interp.visit(tree);
+
+    return 0;
+}
