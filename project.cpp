@@ -21,3 +21,13 @@ public:
         return {TokenType::END_OF_FILE, ""};
     }
 };
+class Interpreter {
+public:
+    int visit(AST* node) {
+        if (node == nullptr) return 0;
+        if (auto num = dynamic_cast<NumberNode*>(node)) {
+            return num->value;
+        }
+        return 0;
+    }
+};
