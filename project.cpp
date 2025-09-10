@@ -22,6 +22,18 @@ public:
     }
 };
 
+class AST {
+public:
+    virtual ~AST() = default;
+};
+
+class NumberNode : public AST {
+public:
+    int value;
+    NumberNode(int v) : value(v) {}
+};
+
+
 class Parser {
 private:
     Lexer &lexer;
