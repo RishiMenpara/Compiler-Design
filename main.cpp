@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <cstdlib>
 using namespace std;
 
 enum class TokenType
@@ -56,9 +57,13 @@ public:
     {
         current = lexer.getNextToken();
     }
+
     AST *parse()
     {
-        return nullptr;
+        void *mem = malloc(sizeof(NumberNode));
+        if (!mem) throw bad_alloc();
+        NumberNode *node = new (mem) NumberNode(42);
+        return node;
     }
 };
 
@@ -76,17 +81,18 @@ public:
         return 0;
     }
 };
+
 int main()
 {
     string s;
-    cout << "Enter an expression";
+    cout << "Enter an expression: ";
     getline(cin, s);
     Lexer lexer(s);
     Parser parser(lexer);
     AST *tree = parser.parse();
-
     Interpreter interp;
     int result = interp.visit(tree);
-
+    cout << "Result = " << result << endl;
+    free(tree);
     return 0;
 }
