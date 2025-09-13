@@ -1,6 +1,5 @@
 #include <iostream>
 #include <string>
-#include <cstdlib>
 using namespace std;
 
 enum class TokenType
@@ -26,12 +25,20 @@ private:
     int pos;
 
 public:
-    Lexer(const string &source) : src(source), pos(0) {}
+    Lexer(const string &source = "") : src(source), pos(0) {}
+
     Token getNextToken()
     {
         return {TokenType::END_OF_FILE, ""};
     }
+
+    friend void showSource(const Lexer &l);
 };
+
+void showSource(const Lexer &l)
+{
+    cout << "Lexer source: " << l.src << endl;
+}
 
 class AST
 {
@@ -43,7 +50,7 @@ class NumberNode : public AST
 {
 public:
     int value;
-    NumberNode(int v) : value(v) {}
+    NumberNode(int v = 0) : value(v) {}
 };
 
 class Parser
@@ -60,10 +67,7 @@ public:
 
     AST *parse()
     {
-        void *mem = malloc(sizeof(NumberNode));
-        if (!mem) throw bad_alloc();
-        NumberNode *node = new (mem) NumberNode(42);
-        return node;
+        return new NumberNode();
     }
 };
 
@@ -87,12 +91,17 @@ int main()
     string s;
     cout << "Enter an expression: ";
     getline(cin, s);
+
     Lexer lexer(s);
+    showSource(lexer);
+
     Parser parser(lexer);
     AST *tree = parser.parse();
+
     Interpreter interp;
     int result = interp.visit(tree);
     cout << "Result = " << result << endl;
-    free(tree);
+
+    delete tree;
     return 0;
 }
