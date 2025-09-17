@@ -33,7 +33,7 @@ public:
 
             if (current == '+') { pos++; return {TokenType::PLUS, "+"}; }
             if (current == '-') { pos++; return {TokenType::MINUS, "-"}; }
-            if (current == '') { pos++; return {TokenType::MUL, ""}; }
+            if (current == '*') { pos++; return {TokenType::MUL, "*"}; }
             if (current == '/') { pos++; return {TokenType::DIV, "/"}; }
             if (current == '(') { pos++; return {TokenType::LPAREN, "("}; }
             if (current == ')') { pos++; return {TokenType::RPAREN, ")"}; }
