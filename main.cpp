@@ -74,7 +74,16 @@ public:
         return new NumberNode();
     }
 };
+class Value {
+public:
+    int val;
+    Value(int v = 0) : val(v) {}
 
+    Value operator+(const Value& other) const { return Value(val + other.val); }
+    Value operator-(const Value& other) const { return Value(val - other.val); }
+    Value operator*(const Value& other) const { return Value(val * other.val); }
+    Value operator/(const Value& other) const { return Value(val / other.val); }
+};
 class Interpreter {
 public:
     Value visit(AST* node) {
