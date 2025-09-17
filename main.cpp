@@ -18,8 +18,6 @@ private:
 public:
     Lexer(const string& source) : src(source), pos(0) {}
 
-    string getSource() const { return src; }
-
     Token getNextToken() {
         while (pos < (int)src.size()) {
             char current = src[pos];
@@ -41,10 +39,8 @@ public:
             pos++;
         }
         return {TokenType::END_OF_FILE, ""};
-void showSource(const Lexer &l)
-{
-    cout << "Lexer source: " << l.getSource() << endl;
-}
+    }
+};
 
 class AST {
 public:
@@ -119,6 +115,17 @@ public:
     }
 };
 
+class Value {
+public:
+    int val;
+    Value(int v = 0) : val(v) {}
+
+    Value operator+(const Value& other) const { return Value(val + other.val); }
+    Value operator-(const Value& other) const { return Value(val - other.val); }
+    Value operator*(const Value& other) const { return Value(val * other.val); }
+    Value operator/(const Value& other) const { return Value(val / other.val); }
+};
+
 class Interpreter {
 public:
     Value visit(AST* node) {
@@ -126,6 +133,8 @@ public:
         if (auto bin = dynamic_cast<BinOpNode*>(node)) return visit(bin);
         return Value(0);
     }
+
+
     Value visit(NumberNode* node) {
         return Value(node->value);
     }
@@ -140,25 +149,22 @@ public:
             case TokenType::MUL:   return left * right;
             case TokenType::DIV:   return left / right;
             default: return Value(0);
-        }
-    }
+        }
+    }
 };
 
-int main()
-{
+int main() {
     string s;
     cout << "Enter an expression: ";
     getline(cin, s);
 
     Lexer lexer(s);
-    showSource(lexer);
-
     Parser parser(lexer);
-    AST *tree = parser.parse();
+    AST* tree = parser.parse();
 
     Interpreter interp;
-    int result = interp.visit(tree);
-    cout << "Result = " << result << endl;
+    Value result = interp.visit(tree);
+    cout << "Result = " << result.val << endl;
 
     delete tree;
     return 0;
