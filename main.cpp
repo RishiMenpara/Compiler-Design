@@ -18,6 +18,8 @@ private:
 public:
     Lexer(const string& source) : src(source), pos(0) {}
 
+    string getSource() const { return src; }
+
     Token getNextToken() {
         while (pos < (int)src.size()) {
             char current = src[pos];
@@ -39,25 +41,21 @@ public:
             pos++;
         }
         return {TokenType::END_OF_FILE, ""};
-    }
-};
 void showSource(const Lexer &l)
 {
-    cout << "Lexer source: " << l.src << endl;
+    cout << "Lexer source: " << l.getSource() << endl;
 }
-
-class AST
-{
+class AST {
 public:
     virtual ~AST() = default;
 };
 
-class NumberNode : public AST
-{
+class NumberNode : public AST {
 public:
     int value;
     NumberNode(int v = 0) : value(v) {}
 };
+
 
 class Parser
 {
