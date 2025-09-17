@@ -2,39 +2,45 @@
 #include <string>
 using namespace std;
 
-enum class TokenType
-{
-    NUMBER,
-    PLUS,
-    MINUS,
-    MUL,
-    DIV,
-    END_OF_FILE
+enum class TokenType {
+    NUMBER, PLUS, MINUS, MUL, DIV, END_OF_FILE
 };
 
-struct Token
-{
+struct Token {
     TokenType type;
     string value;
 };
 
-class Lexer
-{
+class Lexer {
 private:
     string src;
     int pos;
-
 public:
-    Lexer(const string &source = "") : src(source), pos(0) {}
+    Lexer(const string& source) : src(source), pos(0) {}
 
-    Token getNextToken()
-    {
+    Token getNextToken() {
+        while (pos < (int)src.size()) {
+            char current = src[pos];
+            if (isspace(current)) { pos++; continue; }
+
+            if (isdigit(current)) {
+                string num;
+                while (pos < (int)src.size() && isdigit(src[pos])) {
+                    num.push_back(src[pos++]);
+                }
+                return {TokenType::NUMBER, num};
+            }
+
+            if (current == '+') { pos++; return {TokenType::PLUS, "+"}; }
+            if (current == '-') { pos++; return {TokenType::MINUS, "-"}; }
+            if (current == '*') { pos++; return {TokenType::MUL, "*"}; }
+            if (current == '/') { pos++; return {TokenType::DIV, "/"}; }
+
+            pos++;
+        }
         return {TokenType::END_OF_FILE, ""};
     }
-
-    friend void showSource(const Lexer &l);
 };
-
 void showSource(const Lexer &l)
 {
     cout << "Lexer source: " << l.src << endl;
