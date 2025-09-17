@@ -19,7 +19,7 @@ public:
     Lexer(const string& source) : src(source), pos(0) {}
 
     Token getNextToken() {
-        while (pos < (int)src.size()) {
+        while (pos < src.size()) {
             char current = src[pos];
             if (isspace(current)) { pos++; continue; }
 
@@ -33,7 +33,7 @@ public:
 
             if (current == '+') { pos++; return {TokenType::PLUS, "+"}; }
             if (current == '-') { pos++; return {TokenType::MINUS, "-"}; }
-            if (current == '*') { pos++; return {TokenType::MUL, "*"}; }
+            if (current == '') { pos++; return {TokenType::MUL, ""}; }
             if (current == '/') { pos++; return {TokenType::DIV, "/"}; }
             if (current == '(') { pos++; return {TokenType::LPAREN, "("}; }
             if (current == ')') { pos++; return {TokenType::RPAREN, ")"}; }
@@ -45,24 +45,21 @@ public:
     }
 };
 
-class AST {
-public:
-    virtual ~AST() = default;
-};
+enum class NodeType { NUMBER, BINOP };
 
-class NumberNode : public AST {
-public:
+struct AST {
+    NodeType nodetype;
     int value;
-    NumberNode(int v = 0) : value(v) {}
-};
-
-class BinOpNode : public AST {
-public:
     AST* left;
     Token op;
     AST* right;
-    BinOpNode(AST* l, Token o, AST* r) : left(l), op(o), right(r) {}
-    ~BinOpNode() { delete left; delete right; }
+
+    AST(int v) : nodetype(NodeType::NUMBER), value(v), left(nullptr), right(nullptr) {}
+    AST(AST* l, Token o, AST* r) : nodetype(NodeType::BINOP), value(0), left(l), op(o), right(r) {}
+    ~AST() {
+        delete left;
+        delete right;
+    }
 };
 
 class Parser {
@@ -80,7 +77,7 @@ private:
         if (current.type == TokenType::NUMBER) {
             int val = stoi(current.value);
             eat(TokenType::NUMBER);
-            return new NumberNode(val);
+            return new AST(val);
         }
         else if (current.type == TokenType::LPAREN) {
             eat(TokenType::LPAREN);
@@ -97,7 +94,7 @@ private:
             Token op = current;
             if (op.type == TokenType::MUL) eat(TokenType::MUL);
             else eat(TokenType::DIV);
-            node = new BinOpNode(node, op, factor());
+            node = new AST(node, op, factor());
         }
         return node;
     }
@@ -108,7 +105,7 @@ private:
             Token op = current;
             if (op.type == TokenType::PLUS) eat(TokenType::PLUS);
             else eat(TokenType::MINUS);
-            node = new BinOpNode(node, op, term());
+            node = new AST(node, op, term());
         }
         return node;
     }
@@ -140,26 +137,21 @@ public:
 class Interpreter {
 public:
     Value visit(AST* node) {
-        if (auto num = dynamic_cast<NumberNode*>(node)) return visit(num);
-        if (auto bin = dynamic_cast<BinOpNode*>(node)) return visit(bin);
-        return Value(0);
-    }
-
-    Value visit(NumberNode* node) {
-        return Value(node->value);
-    }
-
-    Value visit(BinOpNode* node) {
-        Value left = visit(node->left);
-        Value right = visit(node->right);
-
-        switch (node->op.type) {
-            case TokenType::PLUS:  return left + right;
-            case TokenType::MINUS: return left - right;
-            case TokenType::MUL:   return left * right;
-            case TokenType::DIV:   return left / right;
-            default: return Value(0);
+        if (node->nodetype == NodeType::NUMBER) {
+            return Value(node->value);
         }
+        else if (node->nodetype == NodeType::BINOP) {
+            Value left = visit(node->left);
+            Value right = visit(node->right);
+            switch (node->op.type) {
+                case TokenType::PLUS:  return left + right;
+                case TokenType::MINUS: return left - right;
+                case TokenType::MUL:   return left * right;
+                case TokenType::DIV:   return left / right;
+                default: return Value(0);
+            }
+        }
+        return Value(0);
     }
 };
 
