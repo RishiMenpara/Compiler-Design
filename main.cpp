@@ -45,6 +45,7 @@ void showSource(const Lexer &l)
 {
     cout << "Lexer source: " << l.getSource() << endl;
 }
+
 class AST {
 public:
     virtual ~AST() = default;
@@ -56,34 +57,68 @@ public:
     NumberNode(int v = 0) : value(v) {}
 };
 
+class BinOpNode : public AST {
+public:
+    AST* left;
+    Token op;
+    AST* right;
+    BinOpNode(AST* l, Token o, AST* r) : left(l), op(o), right(r) {}
+};
 
-class Parser
-{
+class Parser {
 private:
     Lexer &lexer;
     Token current;
 
+    void eat(TokenType type) {
+        if (current.type == type) {
+            current = lexer.getNextToken();
+        } else {
+            cerr << "Unexpected token: " << current.value << endl;
+        }
+    }
+
+    AST* factor() {
+        if (current.type == TokenType::NUMBER) {
+            int val = stoi(current.value);
+            eat(TokenType::NUMBER);
+            return new NumberNode(val);
+        }
+        return nullptr;
+    }
+
+    AST* term() {
+        AST* node = factor();
+        while (current.type == TokenType::MUL || current.type == TokenType::DIV) {
+            Token op = current;
+            if (op.type == TokenType::MUL) eat(TokenType::MUL);
+            else eat(TokenType::DIV);
+            node = new BinOpNode(node, op, factor());
+        }
+        return node;
+    }
+
+    AST* expr() {
+        AST* node = term();
+        while (current.type == TokenType::PLUS || current.type == TokenType::MINUS) {
+            Token op = current;
+            if (op.type == TokenType::PLUS) eat(TokenType::PLUS);
+            else eat(TokenType::MINUS);
+            node = new BinOpNode(node, op, term());
+        }
+        return node;
+    }
+
 public:
-    Parser(Lexer &lex) : lexer(lex)
-    {
+    Parser(Lexer &lex) : lexer(lex) {
         current = lexer.getNextToken();
     }
 
-    AST *parse()
-    {
-        return new NumberNode();
+    AST* parse() {
+        return expr();
     }
 };
-class Value {
-public:
-    int val;
-    Value(int v = 0) : val(v) {}
 
-    Value operator+(const Value& other) const { return Value(val + other.val); }
-    Value operator-(const Value& other) const { return Value(val - other.val); }
-    Value operator*(const Value& other) const { return Value(val * other.val); }
-    Value operator/(const Value& other) const { return Value(val / other.val); }
-};
 class Interpreter {
 public:
     Value visit(AST* node) {
