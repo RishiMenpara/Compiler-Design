@@ -3,7 +3,7 @@
 using namespace std;
 
 enum class TokenType {
-    NUMBER, PLUS, MINUS, MUL, DIV, END_OF_FILE
+    NUMBER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, END_OF_FILE
 };
 
 struct Token {
@@ -35,7 +35,10 @@ public:
             if (current == '-') { pos++; return {TokenType::MINUS, "-"}; }
             if (current == '*') { pos++; return {TokenType::MUL, "*"}; }
             if (current == '/') { pos++; return {TokenType::DIV, "/"}; }
+            if (current == '(') { pos++; return {TokenType::LPAREN, "("}; }
+            if (current == ')') { pos++; return {TokenType::RPAREN, ")"}; }
 
+            cerr << "Unexpected character: " << current << endl;
             pos++;
         }
         return {TokenType::END_OF_FILE, ""};
@@ -59,6 +62,7 @@ public:
     Token op;
     AST* right;
     BinOpNode(AST* l, Token o, AST* r) : left(l), op(o), right(r) {}
+    ~BinOpNode() { delete left; delete right; }
 };
 
 class Parser {
@@ -69,8 +73,6 @@ private:
     void eat(TokenType type) {
         if (current.type == type) {
             current = lexer.getNextToken();
-        } else {
-            cerr << "Unexpected token: " << current.value << endl;
         }
     }
 
@@ -79,6 +81,12 @@ private:
             int val = stoi(current.value);
             eat(TokenType::NUMBER);
             return new NumberNode(val);
+        }
+        else if (current.type == TokenType::LPAREN) {
+            eat(TokenType::LPAREN);
+            AST* node = expr();
+            eat(TokenType::RPAREN);
+            return node;
         }
         return nullptr;
     }
@@ -123,7 +131,10 @@ public:
     Value operator+(const Value& other) const { return Value(val + other.val); }
     Value operator-(const Value& other) const { return Value(val - other.val); }
     Value operator*(const Value& other) const { return Value(val * other.val); }
-    Value operator/(const Value& other) const { return Value(val / other.val); }
+    Value operator/(const Value& other) const {
+        if (other.val == 0) throw runtime_error("Division by zero");
+        return Value(val / other.val);
+    }
 };
 
 class Interpreter {
@@ -133,7 +144,6 @@ public:
         if (auto bin = dynamic_cast<BinOpNode*>(node)) return visit(bin);
         return Value(0);
     }
-
 
     Value visit(NumberNode* node) {
         return Value(node->value);
@@ -163,8 +173,12 @@ int main() {
     AST* tree = parser.parse();
 
     Interpreter interp;
-    Value result = interp.visit(tree);
-    cout << "Result = " << result.val << endl;
+    try {
+        Value result = interp.visit(tree);
+        cout << "Result = " << result.val << endl;
+    } catch (exception& e) {
+        cerr << "Error: " << e.what() << endl;
+    }
 
     delete tree;
     return 0;
