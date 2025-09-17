@@ -75,19 +75,29 @@ public:
     }
 };
 
-class Interpreter
-{
+class Interpreter {
 public:
-    int visit(AST *node)
-    {
-        if (node == nullptr)
-            return 0;
-        if (auto num = dynamic_cast<NumberNode *>(node))
-        {
-            return num->value;
-        }
-        return 0;
+    Value visit(AST* node) {
+        if (auto num = dynamic_cast<NumberNode*>(node)) return visit(num);
+        if (auto bin = dynamic_cast<BinOpNode*>(node)) return visit(bin);
+        return Value(0);
     }
+    Value visit(NumberNode* node) {
+        return Value(node->value);
+    }
+
+    Value visit(BinOpNode* node) {
+        Value left = visit(node->left);
+        Value right = visit(node->right);
+
+        switch (node->op.type) {
+            case TokenType::PLUS:  return left + right;
+            case TokenType::MINUS: return left - right;
+            case TokenType::MUL:   return left * right;
+            case TokenType::DIV:   return left / right;
+            default: return Value(0);
+        }
+    }
 };
 
 int main()
