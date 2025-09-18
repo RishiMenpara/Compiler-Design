@@ -67,7 +67,7 @@ private:
     Lexer &lexer;
     Token current;
 
-    void eat(TokenType type) {
+    void nextToken(TokenType type) {
         if (current.type == type) {
             current = lexer.getNextToken();
         }
@@ -76,13 +76,13 @@ private:
     AST* factor() {
         if (current.type == TokenType::NUMBER) {
             int val = stoi(current.value);
-            eat(TokenType::NUMBER);
+            nextToken(TokenType::NUMBER);
             return new AST(val);
         }
         else if (current.type == TokenType::LPAREN) {
-            eat(TokenType::LPAREN);
+            nextToken(TokenType::LPAREN);
             AST* node = expr();
-            eat(TokenType::RPAREN);
+            nextToken(TokenType::RPAREN);
             return node;
         }
         return nullptr;
@@ -92,8 +92,8 @@ private:
         AST* node = factor();
         while (current.type == TokenType::MUL || current.type == TokenType::DIV) {
             Token op = current;
-            if (op.type == TokenType::MUL) eat(TokenType::MUL);
-            else eat(TokenType::DIV);
+            if (op.type == TokenType::MUL) nextToken(TokenType::MUL);
+            else nextToken(TokenType::DIV);
             node = new AST(node, op, factor());
         }
         return node;
@@ -103,8 +103,8 @@ private:
         AST* node = term();
         while (current.type == TokenType::PLUS || current.type == TokenType::MINUS) {
             Token op = current;
-            if (op.type == TokenType::PLUS) eat(TokenType::PLUS);
-            else eat(TokenType::MINUS);
+            if (op.type == TokenType::PLUS) nextToken(TokenType::PLUS);
+            else nextToken(TokenType::MINUS);
             node = new AST(node, op, term());
         }
         return node;
