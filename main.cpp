@@ -3,60 +3,66 @@
 using namespace std;
 
 enum class TokenType {
-    NUMBER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, END_OF_FILE
+    number, plus, minus, mul, div, lparen, rparen, eof
 };
 
 struct Token {
     TokenType type;
-    string value;
+    string text;
 };
 
 class Lexer {
 private:
-    string src;
-    int pos;
+    string input;
+    int index;
+    
 public:
-    Lexer(const string& source) : src(source), pos(0) {}
+    Lexer(const string& source) : input(source), index(0) {}
 
-    Token getNextToken() {
-        while (pos < src.size()) {
-            char current = src[pos];
-            if (isspace(current)) { pos++; continue; }
-
-            if (isdigit(current)) {
-                string num;
-                while (pos < (int)src.size() && isdigit(src[pos])) {
-                    num.push_back(src[pos++]);
-                }
-                return {TokenType::NUMBER, num};
+    Token getNext() {
+        while (index < input.size()) {
+            char ch = input[index];
+            
+            if (isspace(ch)) { 
+                index++; 
+                continue; 
             }
 
-            if (current == '+') { pos++; return {TokenType::PLUS, "+"}; }
-            if (current == '-') { pos++; return {TokenType::MINUS, "-"}; }
-            if (current == '*') { pos++; return {TokenType::MUL, "*"}; }
-            if (current == '/') { pos++; return {TokenType::DIV, "/"}; }
-            if (current == '(') { pos++; return {TokenType::LPAREN, "("}; }
-            if (current == ')') { pos++; return {TokenType::RPAREN, ")"}; }
+            if (isdigit(ch)) {
+                string num;
+                while (index < (int)input.size() && isdigit(input[index])) {
+                    num.push_back(input[index++]);
+                }
+                return {TokenType::number, num};
+            }
 
-            cerr << "Unexpected character: " << current << endl;
-            pos++;
+            if (ch == '+') { index++; return {TokenType::plus, "+"}; }
+            if (ch == '-') { index++; return {TokenType::minus, "-"}; }
+            if (ch == '') { index++; return {TokenType::mul, ""}; }
+            if (ch == '/') { index++; return {TokenType::div, "/"}; }
+            if (ch == '(') { index++; return {TokenType::lparen, "("}; }
+            if (ch == ')') { index++; return {TokenType::rparen, ")"}; }
+
+            cerr << "Bad character: " << ch << endl;
+            index++;
         }
-        return {TokenType::END_OF_FILE, ""};
+        return {TokenType::eof, ""};
     }
 };
 
-enum class NodeType { NUMBER, BINOP };
+enum class NodeType { number, binop };
 
-struct AST {
+struct TreeNode {
     NodeType nodetype;
-    int value;
-    AST* left;
+    int data;
+    TreeNode* left;
     Token op;
-    AST* right;
+    TreeNode* right;
 
-    AST(int v) : nodetype(NodeType::NUMBER), value(v), left(nullptr), right(nullptr) {}
-    AST(AST* l, Token o, AST* r) : nodetype(NodeType::BINOP), value(0), left(l), op(o), right(r) {}
-    ~AST() {
+    TreeNode(int val) : nodetype(NodeType::number), data(val), left(nullptr), right(nullptr) {}
+    TreeNode(TreeNode* l, Token oper, TreeNode* r) : nodetype(NodeType::binop), data(0), left(l), op(oper), right(r) {}
+    
+    ~TreeNode() {
         delete left;
         delete right;
     }
@@ -64,90 +70,105 @@ struct AST {
 
 class Parser {
 private:
-    Lexer &lexer;
-    Token current;
+    Lexer &lex;
+    Token token;
 
-    void nextToken(TokenType type) {
-        if (current.type == type) {
-            current = lexer.getNextToken();
+    void eat(TokenType expected) {
+        if (token.type == expected) {
+            token = lex.getNext();
         }
     }
 
-    AST* factor() {
-        if (current.type == TokenType::NUMBER) {
-            int val = stoi(current.value);
-            nextToken(TokenType::NUMBER);
-            return new AST(val);
+    TreeNode* factor() {
+        if (token.type == TokenType::number) {
+            int val = stoi(token.text);
+            eat(TokenType::number);
+            return new TreeNode(val);
         }
-        else if (current.type == TokenType::LPAREN) {
-            nextToken(TokenType::LPAREN);
-            AST* node = expr();
-            nextToken(TokenType::RPAREN);
-            return node;
+        else if (token.type == TokenType::lparen) {
+            eat(TokenType::lparen);
+            TreeNode* result = expr();
+            eat(TokenType::rparen);
+            return result;
         }
         return nullptr;
     }
 
-    AST* term() {
-        AST* node = factor();
-        while (current.type == TokenType::MUL || current.type == TokenType::DIV) {
-            Token op = current;
-            if (op.type == TokenType::MUL) nextToken(TokenType::MUL);
-            else nextToken(TokenType::DIV);
-            node = new AST(node, op, factor());
+    TreeNode* term() {
+        TreeNode* result = factor();
+        
+        while (token.type == TokenType::mul || token.type == TokenType::div) {
+            Token oper = token;
+            if (oper.type == TokenType::mul) 
+                eat(TokenType::mul);
+            else 
+                eat(TokenType::div);
+            result = new TreeNode(result, oper, factor());
         }
-        return node;
+        return result;
     }
 
-    AST* expr() {
-        AST* node = term();
-        while (current.type == TokenType::PLUS || current.type == TokenType::MINUS) {
-            Token op = current;
-            if (op.type == TokenType::PLUS) nextToken(TokenType::PLUS);
-            else nextToken(TokenType::MINUS);
-            node = new AST(node, op, term());
+    TreeNode* expr() {
+        TreeNode* result = term();
+        
+        while (token.type == TokenType::plus || token.type == TokenType::minus) {
+            Token oper = token;
+            if (oper.type == TokenType::plus) 
+                eat(TokenType::plus);
+            else 
+                eat(TokenType::minus);
+            result = new TreeNode(result, oper, term());
         }
-        return node;
+        return result;
     }
 
 public:
-    Parser(Lexer &lex) : lexer(lex) {
-        current = lexer.getNextToken();
+    Parser(Lexer &lexer) : lex(lexer) {
+        token = lex.getNext();
     }
 
-    AST* parse() {
+    TreeNode* parse() {
         return expr();
     }
 };
 
 class Value {
 public:
-    int val;
-    Value(int v = 0) : val(v) {}
+    int num;
+    
+    Value(int n = 0) : num(n) {}
 
-    Value operator+(const Value& other) const { return Value(val + other.val); }
-    Value operator-(const Value& other) const { return Value(val - other.val); }
-    Value operator*(const Value& other) const { return Value(val * other.val); }
+    Value operator+(const Value& other) const { 
+        return Value(num + other.num); 
+    }
+    Value operator-(const Value& other) const { 
+        return Value(num - other.num); 
+    }
+    Value operator*(const Value& other) const { 
+        return Value(num * other.num); 
+    }
     Value operator/(const Value& other) const {
-        if (other.val == 0) throw runtime_error("Division by zero");
-        return Value(val / other.val);
+        if (other.num == 0) 
+            throw runtime_error("Division by zero");
+        return Value(num / other.num);
     }
 };
 
 class Interpreter {
 public:
-    Value visit(AST* node) {
-        if (node->nodetype == NodeType::NUMBER) {
-            return Value(node->value);
+    Value visit(TreeNode* tree) {
+        if (tree->nodetype == NodeType::number) {
+            return Value(tree->data);
         }
-        else if (node->nodetype == NodeType::BINOP) {
-            Value left = visit(node->left);
-            Value right = visit(node->right);
-            switch (node->op.type) {
-                case TokenType::PLUS:  return left + right;
-                case TokenType::MINUS: return left - right;
-                case TokenType::MUL:   return left * right;
-                case TokenType::DIV:   return left / right;
+        else if (tree->nodetype == NodeType::binop) {
+            Value left = visit(tree->left);
+            Value right = visit(tree->right);
+            
+            switch (tree->op.type) {
+                case TokenType::plus:  return left + right;
+                case TokenType::minus: return left - right;
+                case TokenType::mul:   return left * right;
+                case TokenType::div:   return left / right;
                 default: return Value(0);
             }
         }
@@ -156,18 +177,18 @@ public:
 };
 
 int main() {
-    string s;
-    cout << "Enter an expression: ";
-    getline(cin, s);
+    string expr;
+    cout << "Enter expression: ";
+    getline(cin, expr);
 
-    Lexer lexer(s);
+    Lexer lexer(expr);
     Parser parser(lexer);
-    AST* tree = parser.parse();
+    TreeNode* tree = parser.parse();
 
-    Interpreter interp;
+    Interpreter calc;
     try {
-        Value result = interp.visit(tree);
-        cout << "Result = " << result.val << endl;
+        Value answer = calc.visit(tree);
+        cout << "Result: " << answer.num << endl;
     } catch (exception& e) {
         cerr << "Error: " << e.what() << endl;
     }
