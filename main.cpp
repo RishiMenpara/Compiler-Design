@@ -38,7 +38,7 @@ public:
 
             if (ch == '+') { index++; return {TokenType::plus, "+"}; }
             if (ch == '-') { index++; return {TokenType::minus, "-"}; }
-            if (ch == '') { index++; return {TokenType::mul, ""}; }
+            if (ch == '*') { index++; return {TokenType::mul, "*"}; }
             if (ch == '/') { index++; return {TokenType::div, "/"}; }
             if (ch == '(') { index++; return {TokenType::lparen, "("}; }
             if (ch == ')') { index++; return {TokenType::rparen, ")"}; }
