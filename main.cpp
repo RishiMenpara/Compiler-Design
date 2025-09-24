@@ -5,14 +5,14 @@ using namespace std;
 
 enum class TokenType
 {
-    NUMBER,
-    PLUS,
-    MINUS,
-    MUL,
-    DIV,
-    LPAREN,
-    RPAREN,
-    END_OF_FILE
+    number,
+    plus,
+    minus,
+    mul,
+    div,
+    lparen,
+    rparen,
+    end_of_file
 };
 
 struct Token
@@ -46,36 +46,36 @@ public:
                 string num;
                 while (pos < (int)src.size() && isdigit(src[pos]))
                     num.push_back(src[pos++]);
-                return {TokenType::NUMBER, num};
+                return {TokenType::number, num};
             }
 
             pos++;
             switch (current)
             {
             case '+':
-                return {TokenType::PLUS, "+"};
+                return {TokenType::plus, "+"};
             case '-':
-                return {TokenType::MINUS, "-"};
+                return {TokenType::minus, "-"};
             case '*':
-                return {TokenType::MUL, "*"};
+                return {TokenType::mul, "*"};
             case '/':
-                return {TokenType::DIV, "/"};
+                return {TokenType::div, "/"};
             case '(':
-                return {TokenType::LPAREN, "("};
+                return {TokenType::lparen, "("};
             case ')':
-                return {TokenType::RPAREN, ")"};
+                return {TokenType::rparen, ")"};
             default:
                 cerr << "Unexpected character: " << current << endl;
             }
         }
-        return {TokenType::END_OF_FILE, ""};
+        return {TokenType::end_of_file, ""};
     }
 };
 
 enum class NodeType
 {
-    NUMBER,
-    BINOP
+    number,
+    binop
 };
 
 class BaseNode
@@ -94,23 +94,23 @@ class NumNode : public BaseNode
     int value;
 
 public:
-    NumNode(int v) : BaseNode(NodeType::NUMBER), value(v) {}
+    NumNode(int v) : BaseNode(NodeType::number), value(v) {}
     inline int getValue() const { return value; }
     friend class Interpreter;
 };
 
-class BinOpNode : public BaseNode
+class binopNode : public BaseNode
 {
     BaseNode *left;
     Token op;
     BaseNode *right;
 
 public:
-    BinOpNode(BaseNode *l, Token o, BaseNode *r) : BaseNode(NodeType::BINOP), left(l), op(o), right(r) {}
+    binopNode(BaseNode *l, Token o, BaseNode *r) : BaseNode(NodeType::binop), left(l), op(o), right(r) {}
     inline BaseNode *getLeft() const { return left; }
     inline BaseNode *getRight() const { return right; }
     inline Token getOp() const { return op; }
-    ~BinOpNode()
+    ~binopNode()
     {
         delete left;
         delete right;
@@ -132,17 +132,17 @@ private:
 
     BaseNode *factor()
     {
-        if (token.type == TokenType::NUMBER)
+        if (token.type == TokenType::number)
         {
             int val = stoi(token.value);
-            eat(TokenType::NUMBER);
+            eat(TokenType::number);
             return new NumNode(val);
         }
-        else if (token.type == TokenType::LPAREN)
+        else if (token.type == TokenType::lparen)
         {
-            eat(TokenType::LPAREN);
+            eat(TokenType::lparen);
             BaseNode *node = expr();
-            eat(TokenType::RPAREN);
+            eat(TokenType::rparen);
             return node;
         }
         return nullptr;
@@ -151,14 +151,14 @@ private:
     BaseNode *term()
     {
         BaseNode *node = factor();
-        while (token.type == TokenType::MUL || token.type == TokenType::DIV)
+        while (token.type == TokenType::mul || token.type == TokenType::div)
         {
             Token oper = token;
-            if (oper.type == TokenType::MUL)
-                eat(TokenType::MUL);
+            if (oper.type == TokenType::mul)
+                eat(TokenType::mul);
             else
-                eat(TokenType::DIV);
-            node = new BinOpNode(node, oper, factor());
+                eat(TokenType::div);
+            node = new binopNode(node, oper, factor());
         }
         return node;
     }
@@ -166,14 +166,14 @@ private:
     BaseNode *expr()
     {
         BaseNode *node = term();
-        while (token.type == TokenType::PLUS || token.type == TokenType::MINUS)
+        while (token.type == TokenType::plus || token.type == TokenType::minus)
         {
             Token oper = token;
-            if (oper.type == TokenType::PLUS)
-                eat(TokenType::PLUS);
+            if (oper.type == TokenType::plus)
+                eat(TokenType::plus);
             else
-                eat(TokenType::MINUS);
-            node = new BinOpNode(node, oper, term());
+                eat(TokenType::minus);
+            node = new binopNode(node, oper, term());
         }
         return node;
     }
@@ -194,7 +194,7 @@ public:
     inline Value operator/(const Value &other) const
     {
         if (other.val == 0)
-            throw runtime_error("Division by zero");
+            throw runtime_error("division by zero");
         return Value(val / other.val);
     }
     friend class Interpreter;
@@ -205,25 +205,25 @@ class Interpreter
 public:
     Value visit(BaseNode *node)
     {
-        if (node->getType() == NodeType::NUMBER)
+        if (node->getType() == NodeType::number)
         {
             NumNode *n = (NumNode *)node;
             return Value(n->getValue());
         }
-        else if (node->getType() == NodeType::BINOP)
+        else if (node->getType() == NodeType::binop)
         {
-            BinOpNode *b = (BinOpNode *)node;
+            binopNode *b = (binopNode *)node;
             Value left = visit(b->getLeft());
             Value right = visit(b->getRight());
             switch (b->getOp().type)
             {
-            case TokenType::PLUS:
+            case TokenType::plus:
                 return left + right;
-            case TokenType::MINUS:
+            case TokenType::minus:
                 return left - right;
-            case TokenType::MUL:
+            case TokenType::mul:
                 return left * right;
-            case TokenType::DIV:
+            case TokenType::div:
                 return left / right;
             default:
                 return Value(0);
