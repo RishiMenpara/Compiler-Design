@@ -231,36 +231,72 @@ public:
     friend class Interpreter;
 };
 
-class Interpreter
+class interpreter
 {
-public:
-    Value visit(BaseNode *node)
+    varentry vars[100];
+    int varcount = 0;
+
+    int getvar(const string &n)
     {
-        if (node->getType() == NodeType::number)
-        {
-            NumNode *n = (NumNode *)node;
-            return Value(n->getValue());
-        }
-        else if (node->getType() == NodeType::binop)
-        {
-            binopNode *b = (binopNode *)node;
-            Value left = visit(b->getLeft());
-            Value right = visit(b->getRight());
-            switch (b->getOp().type)
+        for (int i = 0; i < varcount; i++)
+            if (vars[i].name == n)
+                return vars[i].val;
+        throw runtime_error("undefined var: " + n);
+    }
+
+    void setvar(const string &n, int v)
+    {
+        for (int i = 0; i < varcount; i++)
+            if (vars[i].name == n)
             {
-            case TokenType::plus:
+                vars[i].val = v;
+                return;
+            }
+        vars[varcount++] = {n, v};
+    }
+
+public:
+    int visit(basenode *node)
+    {
+        if (node->gettype() == nodetype::number)
+        {
+            numnode *n = (numnode *)node;
+            return n->getval();
+        }
+        else if (node->gettype() == nodetype::var)
+        {
+            varnode *v = (varnode *)node;
+            return getvar(v->getname());
+        }
+        else if (node->gettype() == nodetype::binop)
+        {
+            binopnode *b = (binopnode *)node;
+            int left = visit(b->getleft());
+            int right = visit(b->getright());
+            switch (b->getop().type)
+            {
+            case tokentype::plus:
                 return left + right;
-            case TokenType::minus:
+            case tokentype::minus:
                 return left - right;
-            case TokenType::mul:
+            case tokentype::mul:
                 return left * right;
-            case TokenType::div:
+            case tokentype::divi:
+                if (right == 0)
+                    throw runtime_error("division by zero");
                 return left / right;
             default:
-                return Value(0);
+                return 0;
             }
         }
-        return Value(0);
+        else if (node->gettype() == nodetype::assign)
+        {
+            assignnode *a = (assignnode *)node;
+            int val = visit(a->getexpr());
+            setvar(a->getname(), val);
+            return val;
+        }
+        return 0;
     }
 };
 
