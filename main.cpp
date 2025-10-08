@@ -1,123 +1,154 @@
 #include <iostream>
 #include <string>
+#include <cctype>
 #include <stdexcept>
 using namespace std;
 
-enum class TokenType
+enum class tokentype
 {
     number,
+    identifier,
     plus,
     minus,
     mul,
-    div,
+    divi,
+    assign,
     lparen,
     rparen,
-    end_of_file
+    eof
 };
 
-struct Token
+struct token
 {
-    TokenType type;
+    tokentype type;
     string value;
 };
 
-class Lexer
+class lexer
 {
-private:
     string src;
     int pos;
 
 public:
-    Lexer(const string &source) : src(source), pos(0) {}
+    lexer(const string &s) : src(s), pos(0) {}
 
-    Token getNextToken()
+    token getnext()
     {
         while (pos < (int)src.size())
         {
-            char current = src[pos];
-            if (isspace(current))
+            char c = src[pos];
+            if (isspace(c))
             {
                 pos++;
                 continue;
             }
-
-            if (isdigit(current))
+            if (isdigit(c))
             {
                 string num;
                 while (pos < (int)src.size() && isdigit(src[pos]))
                     num.push_back(src[pos++]);
-                return {TokenType::number, num};
+                return {tokentype::number, num};
             }
-
+            if (isalpha(c))
+            {
+                string id;
+                while (pos < (int)src.size() && isalnum(src[pos]))
+                    id.push_back(src[pos++]);
+                return {tokentype::identifier, id};
+            }
             pos++;
-            switch (current)
+            switch (c)
             {
             case '+':
-                return {TokenType::plus, "+"};
+                return {tokentype::plus, "+"};
             case '-':
-                return {TokenType::minus, "-"};
+                return {tokentype::minus, "-"};
             case '*':
-                return {TokenType::mul, "*"};
+                return {tokentype::mul, "*"};
             case '/':
-                return {TokenType::div, "/"};
+                return {tokentype::divi, "/"};
             case '(':
-                return {TokenType::lparen, "("};
+                return {tokentype::lparen, "("};
             case ')':
-                return {TokenType::rparen, ")"};
+                return {tokentype::rparen, ")"};
+            case '=':
+                return {tokentype::assign, "="};
             default:
-                cerr << "Unexpected character: " << current << endl;
+                throw runtime_error("invalid char");
             }
         }
-        return {TokenType::end_of_file, ""};
+        return {tokentype::eof, ""};
     }
 };
 
-enum class NodeType
+enum class nodetype
 {
     number,
-    binop
+    binop,
+    var,
+    assign
 };
 
-class BaseNode
+class basenode
 {
 protected:
-    NodeType nodetype;
+    nodetype type;
 
 public:
-    BaseNode(NodeType type) : nodetype(type) {}
-    inline NodeType getType() const { return nodetype; }
-    friend class Interpreter;
+    basenode(nodetype t) : type(t) {}
+    nodetype gettype() const { return type; }
+    virtual ~basenode() = default;
 };
 
-class NumNode : public BaseNode
+class numnode : public basenode
 {
-    int value;
+    int val;
 
 public:
-    NumNode(int v) : BaseNode(NodeType::number), value(v) {}
-    inline int getValue() const { return value; }
-    friend class Interpreter;
+    numnode(int v) : basenode(nodetype::number), val(v) {}
+    int getval() const { return val; }
 };
 
-class binopNode : public BaseNode
+class varnode : public basenode
 {
-    BaseNode *left;
-    Token op;
-    BaseNode *right;
+    string name;
 
 public:
-    binopNode(BaseNode *l, Token o, BaseNode *r) : BaseNode(NodeType::binop), left(l), op(o), right(r) {}
-    inline BaseNode *getLeft() const { return left; }
-    inline BaseNode *getRight() const { return right; }
-    inline Token getOp() const { return op; }
-    ~binopNode()
+    varnode(const string &n) : basenode(nodetype::var), name(n) {}
+    string getname() const { return name; }
+};
+
+class binopnode : public basenode
+{
+    basenode *left;
+    token op;
+    basenode *right;
+
+public:
+    binopnode(basenode *l, token o, basenode *r)
+        : basenode(nodetype::binop), left(l), op(o), right(r) {}
+    basenode *getleft() const { return left; }
+    basenode *getright() const { return right; }
+    token getop() const { return op; }
+    ~binopnode()
     {
         delete left;
         delete right;
     }
-    friend class Interpreter;
 };
 
+class assignnode : public basenode
+{
+    string name;
+    basenode *expr;
+
+public:
+    assignnode(const string &n, basenode *e)
+        : basenode(nodetype::assign), name(n), expr(e) {}
+    string getname() const { return name; }
+    basenode *getexpr() const { return expr; }
+    ~assignnode() { delete expr; }
+};
 class Parser
 {
 private:
