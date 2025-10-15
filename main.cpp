@@ -72,115 +72,92 @@ public:
     }
 };
 
-enum class NodeType
-{
-    number,
-    binop
-};
+enum class NodeType { number, binop };
 
-class BaseNode
-{
+class BaseNode {
 protected:
     NodeType nodetype;
-
 public:
     BaseNode(NodeType type) : nodetype(type) {}
-    inline NodeType getType() const { return nodetype; }
-    friend class Interpreter;
+    virtual ~BaseNode() = default;
+    NodeType getType() const { return nodetype; }
 };
 
-class NumNode : public BaseNode
-{
+class NumNode : public BaseNode {
     int value;
-
 public:
     NumNode(int v) : BaseNode(NodeType::number), value(v) {}
-    inline int getValue() const { return value; }
-    friend class Interpreter;
+    int getValue() const { return value; }
 };
 
-class binopNode : public BaseNode
-{
-    BaseNode *left;
+class BinOpNode : public BaseNode {
+    BaseNode* left;
     Token op;
-    BaseNode *right;
-
+    BaseNode* right;
 public:
-    binopNode(BaseNode *l, Token o, BaseNode *r) : BaseNode(NodeType::binop), left(l), op(o), right(r) {}
-    inline BaseNode *getLeft() const { return left; }
-    inline BaseNode *getRight() const { return right; }
-    inline Token getOp() const { return op; }
-    ~binopNode()
-    {
+    BinOpNode(BaseNode* l, Token o, BaseNode* r)
+        : BaseNode(NodeType::binop), left(l), op(o), right(r) {}
+    BaseNode* getLeft() const { return left; }
+    BaseNode* getRight() const { return right; }
+    Token getOp() const { return op; }
+    ~BinOpNode() override {
         delete left;
         delete right;
     }
-    friend class Interpreter;
 };
 
-class Parser
-{
+class Parser {
 private:
-    Lexer &lexer;
+    Lexer& lexer;
     Token token;
 
-    void eat(TokenType expected)
-    {
+    void eat(TokenType expected) {
         if (token.type == expected)
             token = lexer.getNextToken();
+        else
+            throw runtime_error("Unexpected token");
     }
 
-    BaseNode *factor()
-    {
-        if (token.type == TokenType::number)
-        {
+    BaseNode* factor() {
+        if (token.type == TokenType::number) {
             int val = stoi(token.value);
             eat(TokenType::number);
             return new NumNode(val);
-        }
-        else if (token.type == TokenType::lparen)
-        {
+        } else if (token.type == TokenType::lparen) {
             eat(TokenType::lparen);
-            BaseNode *node = expr();
+            BaseNode* node = expr();
             eat(TokenType::rparen);
             return node;
         }
-        return nullptr;
+        throw runtime_error("Invalid factor");
     }
 
-    BaseNode *term()
-    {
-        BaseNode *node = factor();
-        while (token.type == TokenType::mul || token.type == TokenType::div)
-        {
+    BaseNode* term() {
+        BaseNode* node = factor();
+        while (token.type == TokenType::mul || token.type == TokenType::div || token.type == TokenType::mod) {
             Token oper = token;
-            if (oper.type == TokenType::mul)
-                eat(TokenType::mul);
-            else
-                eat(TokenType::div);
-            node = new binopNode(node, oper, factor());
+            if (oper.type == TokenType::mul) eat(TokenType::mul);
+            else if (oper.type == TokenType::div) eat(TokenType::div);
+            else eat(TokenType::mod);
+            node = new BinOpNode(node, oper, factor());
         }
         return node;
     }
 
-    BaseNode *expr()
-    {
-        BaseNode *node = term();
-        while (token.type == TokenType::plus || token.type == TokenType::minus)
-        {
+    BaseNode* expr() {
+        BaseNode* node = term();
+        while (token.type == TokenType::plus || token.type == TokenType::minus) {
             Token oper = token;
-            if (oper.type == TokenType::plus)
-                eat(TokenType::plus);
-            else
-                eat(TokenType::minus);
-            node = new binopNode(node, oper, term());
+            if (oper.type == TokenType::plus) eat(TokenType::plus);
+            else eat(TokenType::minus);
+            node = new BinOpNode(node, oper, term());
         }
         return node;
     }
 
 public:
-    Parser(Lexer &lex) : lexer(lex) { token = lexer.getNextToken(); }
-    BaseNode *parse() { return expr(); }
+    Parser(Lexer& lex) : lexer(lex) { token = lexer.getNextToken(); }
+    BaseNode* parse() { return expr(); }
 };
 
 class Value
