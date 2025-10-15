@@ -1,74 +1,51 @@
 #include <iostream>
 #include <string>
 #include <stdexcept>
+#include <cmath>
 using namespace std;
 
-enum class TokenType
-{
-    number,
-    plus,
-    minus,
-    mul,
-    div,
-    lparen,
-    rparen,
-    end_of_file
+enum class TokenType {
+    number, plus, minus, mul, div, mod, lparen, rparen, end_of_file
 };
 
-struct Token
-{
+struct Token {
     TokenType type;
     string value;
 };
 
-class Lexer
-{
+class Lexer {
 private:
     string src;
     int pos;
 
 public:
-    Lexer(const string &source) : src(source), pos(0) {}
+    Lexer(const string& source) : src(source), pos(0) {}
 
-    Token getNextToken()
-    {
-        while (pos < (int)src.size())
-        {
+    Token getNextToken() {
+        while (pos < (int)src.size()) {
             char current = src[pos];
-            if (isspace(current))
-            {
-                pos++;
-                continue;
-            }
+            if (isspace(current)) { pos++; continue; }
 
-            if (isdigit(current))
-            {
+            if (isdigit(current)) {
                 string num;
                 while (pos < (int)src.size() && isdigit(src[pos]))
                     num.push_back(src[pos++]);
-                return {TokenType::number, num};
+                return { TokenType::number, num };
             }
 
             pos++;
-            switch (current)
-            {
-            case '+':
-                return {TokenType::plus, "+"};
-            case '-':
-                return {TokenType::minus, "-"};
-            case '*':
-                return {TokenType::mul, "*"};
-            case '/':
-                return {TokenType::div, "/"};
-            case '(':
-                return {TokenType::lparen, "("};
-            case ')':
-                return {TokenType::rparen, ")"};
-            default:
-                cerr << "Unexpected character: " << current << endl;
+            switch (current) {
+                case '+': return { TokenType::plus, "+" };
+                case '-': return { TokenType::minus, "-" };
+                case '': return { TokenType::mul, "" };
+                case '/': return { TokenType::div, "/" };
+                case '%': return { TokenType::mod, "%" };
+                case '(': return { TokenType::lparen, "(" };
+                case ')': return { TokenType::rparen, ")" };
+                default: cerr << "Unexpected character: " << current << endl;
             }
         }
-        return {TokenType::end_of_file, ""};
+        return { TokenType::end_of_file, "" };
     }
 };
 
