@@ -160,21 +160,32 @@ public:
     BaseNode* parse() { return expr(); }
 };
 
-class Value
-{
+class Value {
 public:
-    int val;
-    Value(int v = 0) : val(v) {}
-    inline Value operator+(const Value &other) const { return Value(val + other.val); }
-    inline Value operator-(const Value &other) const { return Value(val - other.val); }
-    inline Value operator*(const Value &other) const { return Value(val * other.val); }
-    inline Value operator/(const Value &other) const
-    {
-        if (other.val == 0)
-            throw runtime_error("division by zero");
+    double val;
+    Value(double v = 0) : val(v) {}
+
+    Value operator+(const Value& other) const { return Value(val + other.val); }
+    Value operator-(const Value& other) const { return Value(val - other.val); }
+    Value operator*(const Value& other) const { return Value(val * other.val); }
+    Value operator/(const Value& other) const {
+        if (other.val == 0) throw runtime_error("Division by zero");
         return Value(val / other.val);
     }
-    friend class Interpreter;
+
+    Value mod(const Value& other) const {
+        if (other.val == 0) throw runtime_error("Modulo by zero");
+        if (fabs(val - round(val)) > 1e-9 || fabs(other.val - round(other.val)) > 1e-9)
+            throw runtime_error("Modulus only supported for integers");
+        return Value(fmod(val, other.val));
+    }
+
+    void display() const {
+        if (fabs(val - round(val)) < 1e-9)
+            cout << (int)round(val);
+        else
+            cout << val;
+    }
 };
 
 class Interpreter
