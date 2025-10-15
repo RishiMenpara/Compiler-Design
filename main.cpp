@@ -188,60 +188,48 @@ public:
     }
 };
 
-class Interpreter
-{
+class Interpreter {
 public:
-    Value visit(BaseNode *node)
-    {
-        if (node->getType() == NodeType::number)
-        {
-            NumNode *n = (NumNode *)node;
+    Value visit(BaseNode* node) {
+        if (node->getType() == NodeType::number) {
+            NumNode* n = static_cast<NumNode*>(node);
             return Value(n->getValue());
-        }
-        else if (node->getType() == NodeType::binop)
-        {
-            binopNode *b = (binopNode *)node;
+        } else if (node->getType() == NodeType::binop) {
+            BinOpNode* b = static_cast<BinOpNode*>(node);
             Value left = visit(b->getLeft());
             Value right = visit(b->getRight());
-            switch (b->getOp().type)
-            {
-            case TokenType::plus:
-                return left + right;
-            case TokenType::minus:
-                return left - right;
-            case TokenType::mul:
-                return left * right;
-            case TokenType::div:
-                return left / right;
-            default:
-                return Value(0);
+            switch (b->getOp().type) {
+                case TokenType::plus:  return left + right;
+                case TokenType::minus: return left - right;
+                case TokenType::mul:   return left * right;
+                case TokenType::div:   return left / right;
+                case TokenType::mod:   return left.mod(right);
+                default: return Value(0);
             }
         }
         return Value(0);
     }
 };
 
-int main()
-{
+int main() {
     string s;
     cout << "Enter expression: ";
     getline(cin, s);
 
     Lexer lexer(s);
     Parser parser(lexer);
-    BaseNode *tree = parser.parse();
+    BaseNode* tree = parser.parse();
 
     Interpreter interp;
-    try
-    {
+    try {
         Value result = interp.visit(tree);
-        cout << "Result = " << result.val << endl;
-    }
-    catch (exception &e)
-    {
+        cout << "Result = ";
+        result.display();
+        cout << endl;
+    } catch (exception& e) {
         cerr << "Error: " << e.what() << endl;
     }
 
     delete tree;
-    return 0;
+    return 0;
 }
