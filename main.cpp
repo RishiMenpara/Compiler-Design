@@ -256,31 +256,44 @@ public:
 
     BaseNode *parse() { return statement(); }
 };
-class Value {
+class Value
+{
 public:
     double val;
     Value(double v = 0) : val(v) {}
 
-    Value operator+(const Value& other) const { return Value(val + other.val); }
-    Value operator-(const Value& other) const { return Value(val - other.val); }
-    Value operator*(const Value& other) const { return Value(val * other.val); }
-    Value operator/(const Value& other) const {
-        if (other.val == 0) throw runtime_error("Division by zero");
+    Value operator+(const Value &other) const { return Value(val + other.val); }
+    Value operator-(const Value &other) const { return Value(val - other.val); }
+    Value operator*(const Value &other) const { return Value(val * other.val); }
+    Value operator/(const Value &other) const
+    {
+        if (other.val == 0){
+            throw runtime_error("Division by zero");
+        }
         return Value(val / other.val);
     }
 
-    Value mod(const Value& other) const {
-        if (other.val == 0) throw runtime_error("Modulo by zero");
-        if (fabs(val - round(val)) > 1e-9 || fabs(other.val - round(other.val)) > 1e-9)
+    Value mod(const Value &other) const
+    {
+        if (other.val == 0){
+            throw runtime_error("Modulo by zero");
+        }
+        if (val == (int)val && other.val == (int)other.val){
+            return Value((int)val % (int)other.val);
+        }
+        else{
             throw runtime_error("Modulus only supported for integers");
-        return Value(fmod(val, other.val));
+        }
     }
 
-    void display() const {
-        if (fabs(val - round(val)) < 1e-9)
-            cout << (int)round(val);
-        else
+    void display() const
+    {
+        if (val == (int)val){
+            cout << (int)val;
+        }
+        else{
             cout << val;
+        }
     }
 };
 
