@@ -296,49 +296,85 @@ public:
         }
     }
 };
+class Interpreter
+{
+    map<string, Value> variables;
 
-class Interpreter {
 public:
-    Value visit(BaseNode* node) {
-        if (node->getType() == NodeType::number) {
-            NumNode* n = static_cast<NumNode*>(node);
+    Value visit(BaseNode *node)
+    {
+        if (node->getType() == NodeType::number)
+        {
+            NumNode *n = static_cast<NumNode *>(node);
             return Value(n->getValue());
-        } else if (node->getType() == NodeType::binop) {
-            BinOpNode* b = static_cast<BinOpNode*>(node);
+        }
+        else if (node->getType() == NodeType::variable)
+        {
+            VarNode *v = static_cast<VarNode *>(node);
+            if (variables.find(v->getName()) == variables.end())
+                throw runtime_error("Undefined variable: " + v->getName());
+            return variables[v->getName()];
+        }
+        else if (node->getType() == NodeType::assign)
+        {
+            AssignNode *a = static_cast<AssignNode *>(node);
+            Value val = visit(a->getExpr());
+            variables[a->getVarName()] = val;
+            return val;
+        }
+        else if (node->getType() == NodeType::binop)
+        {
+            BinOpNode *b = static_cast<BinOpNode *>(node);
             Value left = visit(b->getLeft());
             Value right = visit(b->getRight());
-            switch (b->getOp().type) {
-                case TokenType::plus:  return left + right;
-                case TokenType::minus: return left - right;
-                case TokenType::mul:   return left * right;
-                case TokenType::div:   return left / right;
-                case TokenType::mod:   return left.mod(right);
-                default: return Value(0);
+            switch (b->getOp().type)
+            {
+            case TokenType::plus:
+                return left + right;
+            case TokenType::minus:
+                return left - right;
+            case TokenType::mul:
+                return left * right;
+            case TokenType::div:
+                return left / right;
+            case TokenType::mod:
+                return left.mod(right);
+            default:
+                return Value(0);
             }
         }
         return Value(0);
     }
 };
 
-int main() {
-    string s;
-    cout << "Enter expression: ";
-    getline(cin, s);
-
-    Lexer lexer(s);
-    Parser parser(lexer);
-    BaseNode* tree = parser.parse();
-
+int main()
+{
     Interpreter interp;
-    try {
-        Value result = interp.visit(tree);
-        cout << "Result = ";
-        result.display();
-        cout << endl;
-    } catch (exception& e) {
-        cerr << "Error: " << e.what() << endl;
+    while (true)
+    {
+        cout << ">>> ";
+        string s;
+        if (!getline(cin, s) || s.empty())
+            break;
+
+        Lexer lexer(s);
+        Parser parser(lexer);
+        BaseNode *tree = parser.parse();
+
+        try
+        {
+            Value result = interp.visit(tree);
+            cout << "Result = ";
+            result.display();
+            cout << "\n";
+        }
+        catch (exception &e)
+        {
+            cout << "Error: " << e.what() << "\n";
+        }
+
+        delete tree;
     }
 
-    delete tree;
-    return 0;
+    return 0;
 }
