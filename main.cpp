@@ -1,142 +1,261 @@
 #include <iostream>
 #include <string>
 #include <stdexcept>
-#include <cmath>
+#include <map>
 using namespace std;
 
-enum class TokenType {
-    number, plus, minus, mul, div, mod, lparen, rparen, end_of_file
+enum class TokenType
+{
+    number,
+    plus,
+    minus,
+    mul,
+    div,
+    mod,
+    assign,
+    identifier,
+    lparen,
+    rparen,
+    end_of_file
 };
 
-struct Token {
+struct Token
+{
     TokenType type;
     string value;
 };
 
-class Lexer {
+class Lexer
+{
 private:
     string src;
     int pos;
 
 public:
-    Lexer(const string& source) : src(source), pos(0) {}
+    Lexer(const string &source) : src(source), pos(0) {}
 
-    Token getNextToken() {
-        while (pos < (int)src.size()) {
+    Token getNextToken()
+    {
+        while (pos < src.size())
+        {
             char current = src[pos];
-            if (isspace(current)) { pos++; continue; }
+            if (isspace(current))
+            {
+                pos++;
+                continue;
+            }
 
-            if (isdigit(current)) {
+            if (isalpha(current))
+            {
+                string id;
+                while (pos < src.size() && isalnum(src[pos]))
+                    id.push_back(src[pos++]);
+                return {TokenType::identifier, id};
+            }
+
+            if (isdigit(current) || current == '.')
+            {
                 string num;
-                while (pos < (int)src.size() && isdigit(src[pos]))
+                bool hasDot = false;
+                while (pos < src.size() && (isdigit(src[pos]) || src[pos] == '.'))
+                {
+                    if (src[pos] == '.')
+                    {
+                        if (hasDot)
+                            break;
+                        hasDot = true;
+                    }
                     num.push_back(src[pos++]);
-                return { TokenType::number, num };
+                }
+                return {TokenType::number, num};
             }
 
             pos++;
-            switch (current) {
-                case '+': return { TokenType::plus, "+" };
-                case '-': return { TokenType::minus, "-" };
-                case '': return { TokenType::mul, "" };
-                case '/': return { TokenType::div, "/" };
-                case '%': return { TokenType::mod, "%" };
-                case '(': return { TokenType::lparen, "(" };
-                case ')': return { TokenType::rparen, ")" };
-                default: cerr << "Unexpected character: " << current << endl;
+            switch (current)
+            {
+            case '+':
+                return {TokenType::plus, "+"};
+            case '-':
+                return {TokenType::minus, "-"};
+            case '*':
+                return {TokenType::mul, "*"};
+            case '/':
+                return {TokenType::div, "/"};
+            case '%':
+                return {TokenType::mod, "%"};
+            case '(':
+                return {TokenType::lparen, "("};
+            case ')':
+                return {TokenType::rparen, ")"};
+            case '=':
+                return {TokenType::assign, "="};
+            default:
+                cout << "Unexpected character: " << current << "\n";
             }
         }
-        return { TokenType::end_of_file, "" };
+        return {TokenType::end_of_file, ""};
     }
 };
 
-enum class NodeType { number, binop };
+enum class NodeType
+{
+    number,
+    binop,
+    assign,
+    variable
+};
 
-class BaseNode {
+class BaseNode
+{
 protected:
     NodeType nodetype;
+
 public:
     BaseNode(NodeType type) : nodetype(type) {}
     virtual ~BaseNode() = default;
     NodeType getType() const { return nodetype; }
 };
 
-class NumNode : public BaseNode {
-    int value;
+class NumNode : public BaseNode
+{
+    double value;
+
 public:
-    NumNode(int v) : BaseNode(NodeType::number), value(v) {}
-    int getValue() const { return value; }
+    NumNode(double v) : BaseNode(NodeType::number), value(v) {}
+    double getValue() const { return value; }
 };
 
-class BinOpNode : public BaseNode {
-    BaseNode* left;
-    Token op;
-    BaseNode* right;
+class VarNode : public BaseNode
+{
+    string name;
+
 public:
-    BinOpNode(BaseNode* l, Token o, BaseNode* r)
-        : BaseNode(NodeType::binop), left(l), op(o), right(r) {}
-    BaseNode* getLeft() const { return left; }
-    BaseNode* getRight() const { return right; }
+    VarNode(const string &n) : BaseNode(NodeType::variable), name(n) {}
+    string getName() const { return name; }
+};
+
+class BinOpNode : public BaseNode
+{
+    BaseNode *left;
+    Token op;
+    BaseNode *right;
+
+public:
+    BinOpNode(BaseNode *l, Token o, BaseNode *r): BaseNode(NodeType::binop), left(l), op(o), right(r) {}
+    BaseNode *getLeft() const { return left; }
+    BaseNode *getRight() const { return right; }
     Token getOp() const { return op; }
-    ~BinOpNode() override {
+    ~BinOpNode() override
+    {
         delete left;
         delete right;
     }
 };
 
-class Parser {
+class AssignNode : public BaseNode
+{
+    string varName;
+    BaseNode *expr;
+
+public:
+    AssignNode(const string &n, BaseNode *e): BaseNode(NodeType::assign), varName(n), expr(e) {}
+    string getVarName() const { return varName; }
+    BaseNode *getExpr() const { return expr; }
+    ~AssignNode() override { delete expr; }
+};
+
+class Parser
+{
 private:
-    Lexer& lexer;
+    Lexer &lexer;
     Token token;
 
-    void eat(TokenType expected) {
+    void eat(TokenType expected)
+    {
         if (token.type == expected)
             token = lexer.getNextToken();
         else
             throw runtime_error("Unexpected token");
     }
 
-    BaseNode* factor() {
-        if (token.type == TokenType::number) {
-            int val = stoi(token.value);
+    BaseNode *factor()
+    {
+        if (token.type == TokenType::number)
+        {
+            double val = stod(token.value);
             eat(TokenType::number);
             return new NumNode(val);
-        } else if (token.type == TokenType::lparen) {
+        }
+        else if (token.type == TokenType::identifier)
+        {
+            string name = token.value;
+            eat(TokenType::identifier);
+            return new VarNode(name);
+        }
+        else if (token.type == TokenType::lparen)
+        {
             eat(TokenType::lparen);
-            BaseNode* node = expr();
+            BaseNode *node = expr();
             eat(TokenType::rparen);
             return node;
         }
         throw runtime_error("Invalid factor");
     }
 
-    BaseNode* term() {
-        BaseNode* node = factor();
-        while (token.type == TokenType::mul || token.type == TokenType::div || token.type == TokenType::mod) {
+    BaseNode *term()
+    {
+        BaseNode *node = factor();
+        while (token.type == TokenType::mul || token.type == TokenType::div || token.type == TokenType::mod)
+        {
             Token oper = token;
-            if (oper.type == TokenType::mul) eat(TokenType::mul);
-            else if (oper.type == TokenType::div) eat(TokenType::div);
-            else eat(TokenType::mod);
+            if (oper.type == TokenType::mul)
+                eat(TokenType::mul);
+            else if (oper.type == TokenType::div)
+                eat(TokenType::div);
+            else
+                eat(TokenType::mod);
             node = new BinOpNode(node, oper, factor());
         }
         return node;
     }
 
-    BaseNode* expr() {
-        BaseNode* node = term();
-        while (token.type == TokenType::plus || token.type == TokenType::minus) {
+    BaseNode *expr()
+    {
+        BaseNode *node = term();
+        while (token.type == TokenType::plus || token.type == TokenType::minus)
+        {
             Token oper = token;
-            if (oper.type == TokenType::plus) eat(TokenType::plus);
-            else eat(TokenType::minus);
+            if (oper.type == TokenType::plus)
+                eat(TokenType::plus);
+            else
+                eat(TokenType::minus);
             node = new BinOpNode(node, oper, term());
         }
         return node;
     }
 
 public:
-    Parser(Lexer& lex) : lexer(lex) { token = lexer.getNextToken(); }
-    BaseNode* parse() { return expr(); }
-};
+    Parser(Lexer &lex) : lexer(lex) { token = lexer.getNextToken(); }
 
+    BaseNode *statement()
+    {
+        if (token.type == TokenType::identifier)
+        {
+            string varName = token.value;
+            eat(TokenType::identifier);
+            if (token.type == TokenType::assign)
+            {
+                eat(TokenType::assign);
+                BaseNode *rhs = expr();
+                return new AssignNode(varName, rhs);
+            }
+            throw runtime_error("Expected '=' after variable");
+        }
+        return expr();
+    }
+
+    BaseNode *parse() { return statement(); }
+};
 class Value {
 public:
     double val;
