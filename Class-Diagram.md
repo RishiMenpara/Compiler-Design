@@ -1,3 +1,5 @@
+
+```mermaid
 classDiagram
 direction TB
 
@@ -118,3 +120,4 @@ Interpreter --> Value : returns
 BinOpNode --> Token : uses
 BinOpNode --> BaseNode : left/right
 AssignNode --> BaseNode : expr
+```
