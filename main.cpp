@@ -271,46 +271,51 @@ public:
     Node *parse() { return statement(); }
 };
 
-class Value
-{
+
+class Value {
 public:
-    double val;
-    Value(double v = 0) : val(v) {}
+    double v;
+    Value(double x = 0) { v = x; }
 
-    Value operator+(const Value &other) const { return Value(val + other.val); }
-    Value operator-(const Value &other) const { return Value(val - other.val); }
-    Value operator*(const Value &other) const { return Value(val * other.val); }
-    Value operator/(const Value &other) const
-    {
-        if (other.val == 0){
-            throw runtime_error("Division by zero");
-        }
-        return Value(val / other.val);
+    Value operator+(Value o) { return Value(v + o.v); }
+    Value operator-(Value o) { return Value(v - o.v); }
+    Value operator*(Value o) { return Value(v * o.v); }
+    Value operator/(Value o) { if (o.v == 0) throw runtime_error("Divide by zero"); return Value(v / o.v); }
+    Value mod(Value o) { return Value((int)v % (int)o.v); }
+};
+
+struct Variable { string name; double value; };
+
+class VarTable {
+public:
+    Variable vars[100];
+    int count = 0;
+
+    bool exists(string n) {
+        for (int i = 0; i < count; i++)
+            if (vars[i].name == n)
+                return true;
+        return false;
     }
 
-    Value mod(const Value &other) const
-    {
-        if (other.val == 0){
-            throw runtime_error("Modulo by zero");
-        }
-        if (val == (int)val && other.val == (int)other.val){
-            return Value((int)val % (int)other.val);
-        }
-        else{
-            throw runtime_error("Modulus only supported for integers");
-        }
+    double get(string n) {
+        for (int i = 0; i < count; i++)
+            if (vars[i].name == n)
+                return vars[i].value;
+        throw runtime_error("Undefined variable " + n);
     }
 
-    void display() const
-    {
-        if (val == (int)val){
-            cout << (int)val;
+    void set(string n, double val) {
+        for (int i = 0; i < count; i++) {
+            if (vars[i].name == n) {
+                vars[i].value = val;
+                return;
+            }
         }
-        else{
-            cout << val;
-        }
+        vars[count++] = {n, val};
     }
 };
+
 class Interpreter
 {
     map<string, Value> variables;
@@ -362,34 +367,28 @@ public:
     }
 };
 
-int main()
-{
+int main() {
+    cout << "Simple Calculator with if/else, for, blocks, and print\n";
     Interpreter interp;
-    while (true)
-    {
-        cout << ">>> ";
-        string s;
-        if (!getline(cin, s) || s.empty())
-            break;
 
-        Lexer lexer(s);
-        Parser parser(lexer);
-        BaseNode *tree = parser.parse();
-
-        try
-        {
-            Value result = interp.visit(tree);
-            cout << "Result = ";
-            result.display();
-            cout << "\n";
+    string line, code = "";
+    cout << ">>> ";
+    while (getline(cin, line)) {
+        if (line.empty()) break;
+        code += line + "\n";
+        if (line.find('}') != string::npos || line.find(';') != string::npos) {
+            try {
+                Lexer lex(code);
+                Parser parser(lex);
+                Node *tree = parser.parse();
+                interp.visit(tree);
+                delete tree;
+            } catch (exception &e) {
+                cout << "Error: " << e.what() << endl;
+            }
+            code = "";
+            cout << ">>> ";
         }
-        catch (exception &e)
-        {
-            cout << "Error: " << e.what() << "\n";
-        }
-
-        delete tree;
     }
-
-    return 0;
+    return 0;
 }
