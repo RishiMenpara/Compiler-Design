@@ -316,57 +316,68 @@ public:
     }
 };
 
-class Interpreter
-{
-    map<string, Value> variables;
-
+class Interpreter {
 public:
-    Value visit(BaseNode *node)
-    {
-        if (node->getType() == NodeType::number)
-        {
-            NumNode *n = static_cast<NumNode *>(node);
-            return Value(n->getValue());
+    VarTable table;
+
+    Value visit(Node *n) {
+        if (n->type == NodeType::NUM)
+            return Value(((NumNode *)n)->val);
+
+        else if (n->type == NodeType::VAR)
+            return Value(table.get(((VarNode *)n)->name));
+
+        else if (n->type == NodeType::ASSIGN) {
+            AssignNode *a = (AssignNode *)n;
+            Value v = visit(a->expr);
+            table.set(a->name, v.v);
+            return v;
         }
-        else if (node->getType() == NodeType::variable)
-        {
-            VarNode *v = static_cast<VarNode *>(node);
-            if (variables.find(v->getName()) == variables.end())
-                throw runtime_error("Undefined variable: " + v->getName());
-            return variables[v->getName()];
-        }
-        else if (node->getType() == NodeType::assign)
-        {
-            AssignNode *a = static_cast<AssignNode *>(node);
-            Value val = visit(a->getExpr());
-            variables[a->getVarName()] = val;
-            return val;
-        }
-        else if (node->getType() == NodeType::binop)
-        {
-            BinOpNode *b = static_cast<BinOpNode *>(node);
-            Value left = visit(b->getLeft());
-            Value right = visit(b->getRight());
-            switch (b->getOp().type)
-            {
-            case TokenType::plus:
-                return left + right;
-            case TokenType::minus:
-                return left - right;
-            case TokenType::mul:
-                return left * right;
-            case TokenType::div:
-                return left / right;
-            case TokenType::mod:
-                return left.mod(right);
-            default:
-                return Value(0);
+        else if (n->type == NodeType::BINOP) {
+            BinOpNode *b = (BinOpNode *)n;
+            Value left = visit(b->left);
+            Value right = visit(b->right);
+            switch (b->op.type) {
+            case TokenType::PLUS: return left + right;
+            case TokenType::MINUS: return left - right;
+            case TokenType::MUL: return left * right;
+            case TokenType::DIV: return left / right;
+            case TokenType::MOD: return left.mod(right);
+            case TokenType::LESS: return Value(left.v < right.v);
+            case TokenType::GREATER: return Value(left.v > right.v);
+            default: return Value(0);
             }
+        }
+        else if (n->type == NodeType::IFSTMT) {
+            IfNode *i = (IfNode *)n;
+            Value cond = visit(i->cond);
+            if (cond.v != 0)
+                return visit(i->thenStmt);
+            else if (i->elseStmt)
+                return visit(i->elseStmt);
+            return Value(0);
+        }
+        else if (n->type == NodeType::FORSTMT) {
+            ForNode *f = (ForNode *)n;
+            for (visit(f->init); visit(f->cond).v != 0; visit(f->update))
+                visit(f->body);
+            return Value(0);
+        }
+        else if (n->type == NodeType::BLOCK) {
+            BlockNode *b = (BlockNode *)n;
+            for (int i = 0; i < b->count; i++)
+                visit(b->stmts[i]);
+            return Value(0);
+        }
+        else if (n->type == NodeType::PRINT) {
+            PrintNode *p = (PrintNode *)n;
+            Value v = visit(p->expr);
+            cout << v.v << endl;
+            return Value(0);
         }
         return Value(0);
     }
 };
-
 int main() {
     cout << "Simple Calculator with if/else, for, blocks, and print\n";
     Interpreter interp;
