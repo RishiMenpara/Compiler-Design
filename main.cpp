@@ -159,98 +159,118 @@ public:
     ~PrintNode() { delete expr; }
 };
 
-class Parser
-{
-private:
-    Lexer &lexer;
-    Token token;
+class Parser {
+public:
+    Lexer &lex;
+    Token curr;
 
-    void eat(TokenType expected)
-    {
-        if (token.type == expected)
-            token = lexer.getNextToken();
-        else
-            throw runtime_error("Unexpected token");
+    Parser(Lexer &l) : lex(l) { curr = lex.getNextToken(); }
+
+    void eat(TokenType t) {
+        if (curr.type == t) curr = lex.getNextToken();
+        else throw runtime_error("Syntax error");
     }
 
-    BaseNode *factor()
-    {
-        if (token.type == TokenType::number)
-        {
-            double val = stod(token.value);
-            eat(TokenType::number);
-            return new NumNode(val);
-        }
-        else if (token.type == TokenType::identifier)
-        {
-            string name = token.value;
-            eat(TokenType::identifier);
-            return new VarNode(name);
-        }
-        else if (token.type == TokenType::lparen)
-        {
-            eat(TokenType::lparen);
-            BaseNode *node = expr();
-            eat(TokenType::rparen);
+    Node *factor() {
+        if (curr.type == TokenType::NUMBER) {
+            double v = stod(curr.value);
+            eat(TokenType::NUMBER);
+            return new NumNode(v);
+        } else if (curr.type == TokenType::ID) {
+            string n = curr.value;
+            eat(TokenType::ID);
+            return new VarNode(n);
+        } else if (curr.type == TokenType::LPAREN) {
+            eat(TokenType::LPAREN);
+            Node *node = expr();
+            eat(TokenType::RPAREN);
             return node;
         }
         throw runtime_error("Invalid factor");
     }
 
-    BaseNode *term()
-    {
-        BaseNode *node = factor();
-        while (token.type == TokenType::mul || token.type == TokenType::div || token.type == TokenType::mod)
-        {
-            Token oper = token;
-            if (oper.type == TokenType::mul)
-                eat(TokenType::mul);
-            else if (oper.type == TokenType::div)
-                eat(TokenType::div);
-            else
-                eat(TokenType::mod);
-            node = new BinOpNode(node, oper, factor());
+    Node *term() {
+        Node *node = factor();
+        while (curr.type == TokenType::MUL || curr.type == TokenType::DIV || curr.type == TokenType::MOD) {
+            Token op = curr;
+            eat(curr.type);
+            node = new BinOpNode(node, op, factor());
         }
         return node;
     }
 
-    BaseNode *expr()
-    {
-        BaseNode *node = term();
-        while (token.type == TokenType::plus || token.type == TokenType::minus)
-        {
-            Token oper = token;
-            if (oper.type == TokenType::plus)
-                eat(TokenType::plus);
-            else
-                eat(TokenType::minus);
-            node = new BinOpNode(node, oper, term());
+    Node *expr() {
+        Node *node = term();
+        while (curr.type == TokenType::PLUS || curr.type == TokenType::MINUS ||
+               curr.type == TokenType::LESS || curr.type == TokenType::GREATER) {
+            Token op = curr;
+            eat(curr.type);
+            node = new BinOpNode(node, op, term());
         }
         return node;
     }
 
-public:
-    Parser(Lexer &lex) : lexer(lex) { token = lexer.getNextToken(); }
-
-    BaseNode *statement()
-    {
-        if (token.type == TokenType::identifier)
-        {
-            string varName = token.value;
-            eat(TokenType::identifier);
-            if (token.type == TokenType::assign)
-            {
-                eat(TokenType::assign);
-                BaseNode *rhs = expr();
-                return new AssignNode(varName, rhs);
+    Node *statement() {
+        if (curr.type == TokenType::PRINT) {
+            eat(TokenType::PRINT);
+            Node *exprNode = expr();
+            return new PrintNode(exprNode);
+        }
+        else if (curr.type == TokenType::ID) {
+            string name = curr.value;
+            eat(TokenType::ID);
+            if (curr.type == TokenType::ASSIGN) {
+                eat(TokenType::ASSIGN);
+                Node *rhs = expr();
+                return new AssignNode(name, rhs);
             }
-            throw runtime_error("Expected '=' after variable");
+            else {
+                return new VarNode(name);
+            }
+        }
+        else if (curr.type == TokenType::IF) {
+            eat(TokenType::IF);
+            eat(TokenType::LPAREN);
+            Node *cond = expr();
+            eat(TokenType::RPAREN);
+            Node *thenStmt = statement();
+            Node *elseStmt = nullptr;
+            if (curr.type == TokenType::ELSE) {
+                eat(TokenType::ELSE);
+                elseStmt = statement();
+            }
+            return new IfNode(cond, thenStmt, elseStmt);
+        }
+        else if (curr.type == TokenType::FOR) {
+            eat(TokenType::FOR);
+            eat(TokenType::LPAREN);
+            Node *init = statement();
+            eat(TokenType::SEMI);
+            Node *cond = expr();
+            eat(TokenType::SEMI);
+            Node *update = statement();
+            eat(TokenType::RPAREN);
+            Node *body = statement();
+            return new ForNode(init, cond, update, body);
+        }
+        else if (curr.type == TokenType::LBRACE) {
+            eat(TokenType::LBRACE);
+            BlockNode *block = new BlockNode();
+            while (curr.type != TokenType::RBRACE && curr.type != TokenType::END) {
+                Node *stmt = statement();
+                block->add(stmt);
+                if (curr.type == TokenType::SEMI)
+                    eat(TokenType::SEMI);
+            }
+            eat(TokenType::RBRACE);
+            return block;
         }
         return expr();
     }
 
-    BaseNode *parse() { return statement(); }
+    Node *parse() { return statement(); }
 };
+
 class Value
 {
 public:
