@@ -1,181 +1,162 @@
 #include <iostream>
 #include <string>
 #include <stdexcept>
-#include <cctype>
 using namespace std;
 
-enum class token_typ {
-    number, plus, minus, multi, divison, mod,
-    assign, iden, print,
-    lparen, rparen, lbrace, rbrace,
-    less, greater,
-    If, Else, For,
-    semi, end
+enum class TokenType {
+    NUMBER,
+    PLUS, MINUS, MUL, DIV, MOD,
+    ASSIGN,
+    ID, PRINT,
+    LPAREN, RPAREN,
+    LBRACE, RBRACE,
+    LESS, GREATER,
+    IF, ELSE, FOR,
+    SEMI,
+    END
 };
 
-struct token {
-    token_typ type;
-    string val;
+struct Token {
+    TokenType type;
+    string value;
 };
 
-class lexer {
+class Lexer {
 public:
-    string source;
-    int posi;
+    string src;
+    int pos;
 
-    lexer(string s) {
-        source = s;
-        posi = 0;
+    Lexer(string s) {
+        src = s;
+        pos = 0;
     }
 
-    token gettoken() {
-        while (posi < source.size()) {
-            char c = source[posi];
-
-            if (isspace(c)) {
-                posi++;
-                continue;
+    Token getNextToken() {
+        while (pos < src.size()) {
+            char c = src[pos];
+            if (isspace(c)) { 
+                pos++; 
+                continue; 
             }
 
             if (isalpha(c)) {
                 string id = "";
-                while (posi < source.size() && isalnum(source[posi])) {
-                    id += source[posi++];
+                while (pos < src.size() && isalnum(src[pos])) {
+                    id += src[pos++];
                 }
-                if (id == "if") return {token_typ::If, id};
-                if (id == "else") return {token_typ::Else, id};
-                if (id == "for") return {token_typ::For, id};
-                if (id == "print") return {token_typ::print, id};
-                return {token_typ::iden, id};
+                if (id == "if") return {TokenType::IF, id};
+                if (id == "else") return {TokenType::ELSE, id};
+                if (id == "for") return {TokenType::FOR, id};
+                if (id == "print") return {TokenType::PRINT, id};
+                return {TokenType::ID, id};
             }
 
             if (isdigit(c) || c == '.') {
                 string num = "";
-                bool dot = false;
-                while (posi < source.size() &&
-                       (isdigit(source[posi]) || source[posi] == '.')) {
-                    if (source[posi] == '.') {
-                        if (dot) break;
-                        dot = true;
+                bool hasDot = false;
+                while (pos < src.size() && (isdigit(src[pos]) || src[pos] == '.')) {
+                    if (src[pos] == '.') {
+                        if (hasDot) break;
+                        hasDot = true;
                     }
-                    num += source[posi++];
+                    num += src[pos++];
                 }
-                return {token_typ::number, num};
+                return {TokenType::NUMBER, num};
             }
 
-            posi++;
+            pos++;
+            if (c == '+') return {TokenType::PLUS, "+"};
+            if (c == '-') return {TokenType::MINUS, "-"};
+            if (c == '') return {TokenType::MUL, ""};
+            if (c == '/') return {TokenType::DIV, "/"};
+            if (c == '%') return {TokenType::MOD, "%"};
+            if (c == '(') return {TokenType::LPAREN, "("};
+            if (c == ')') return {TokenType::RPAREN, ")"};
+            if (c == '{') return {TokenType::LBRACE, "{"};
+            if (c == '}') return {TokenType::RBRACE, "}"};
+            if (c == '=') return {TokenType::ASSIGN, "="};
+            if (c == ';') return {TokenType::SEMI, ";"};
+            if (c == '<') return {TokenType::LESS, "<"};
+            if (c == '>') return {TokenType::GREATER, ">"};
 
-            if (c == '+') return {token_typ::plus, "+"};
-            if (c == '-') return {token_typ::minus, "-"};
-            if (c == '*') return {token_typ::multi, "*"};
-            if (c == '/') return {token_typ::divison, "/"};
-            if (c == '%') return {token_typ::mod, "%"};
-            if (c == '(') return {token_typ::lparen, "("};
-            if (c == ')') return {token_typ::rparen, ")"};
-            if (c == '{') return {token_typ::lbrace, "{"};
-            if (c == '}') return {token_typ::rbrace, "}"};
-            if (c == '=') return {token_typ::assign, "="};
-            if (c == ';') return {token_typ::semi, ";"};
-            if (c == '<') return {token_typ::less, "<"};
-            if (c == '>') return {token_typ::greater, ">"};
-
-            cout << "Unknown character: " << c << endl;
+            cout << "Unknown char: " << c << endl;
         }
-        return {token_typ::end, ""};
+        return {TokenType::END, ""};
     }
 };
 
-enum class nodetype {
-    numbr, varibl, binop, assign,
-    ifstm, forstm, blck, print
-};
+enum class NodeType { NUM, VAR, BINOP, ASSIGN, IFSTMT, FORSTMT, BLOCK, PRINT };
 
-class node {
+class Node {
 public:
-    nodetype type;
-    node(nodetype t) { type = t; }
-    virtual ~node() {}
+    NodeType type;
+    Node(NodeType t) { type = t; }
+    virtual ~Node() {}
 };
 
-class numbnode : public node {
+class NumNode : public Node {
 public:
-    double n;
-    numbnode(double x) : node(nodetype::numbr) { n = x; }
+    double val;
+    NumNode(double v) : Node(NodeType::NUM), val(v) {}
 };
 
-class varinode : public node {
+class VarNode : public Node {
 public:
     string name;
-    varinode(string n) : node(nodetype::varibl) { name = n; }
+    VarNode(string n) : Node(NodeType::VAR), name(n) {}
 };
 
-class binopnode : public node {
+class BinOpNode : public Node {
 public:
-    node *l;
-    node *r;
-    token op;
-
-    binopnode(node *a, token o, node *b)
-        : node(nodetype::binop), l(a), op(o), r(b) {}
-
-    ~binopnode() { delete l, r; }
+    Node *left;
+    Token op;
+    Node *right;
+    BinOpNode(Node *l, Token o, Node *r) : Node(NodeType::BINOP), left(l), op(o), right(r) {}
+    ~BinOpNode() { delete left; delete right; }
 };
 
-class assignnode : public node {
+class AssignNode : public Node {
 public:
     string name;
-    node *expr;
-
-    assignnode(string n, node *e)
-        : node(nodetype::assign), name(n), expr(e) {}
-
-    ~assignnode() { delete expr; }
+    Node *expr;
+    AssignNode(string n, Node *e) : Node(NodeType::ASSIGN), name(n), expr(e) {}
+    ~AssignNode() { delete expr; }
 };
 
-class ifnode : public node {
+class IfNode : public Node {
 public:
-    node *cond;
-    node *thenstm;
-    node *elsstm;
-
-    ifnode(node *c, node *t, node *e)
-        : node(nodetype::ifstm), cond(c), thenstm(t), elsstm(e) {}
-
-    ~ifnode() { delete cond, thenstm; if (elsstm) delete elsstm; }
+    Node *cond;
+    Node *thenStmt;
+    Node *elseStmt;
+    IfNode(Node *c, Node *t, Node *e) : Node(NodeType::IFSTMT), cond(c), thenStmt(t), elseStmt(e) {}
+    ~IfNode() { delete cond; delete thenStmt; if (elseStmt) delete elseStmt; }
 };
 
-class fornode : public node {
+class ForNode : public Node {
 public:
-    node *init;
-    node *cond;
-    node *upd;
-    node *bdy;
-
-    fornode(node *i, node *c, node *u, node *b)
-        : node(nodetype::forstm), init(i), cond(c), upd(u), bdy(b) {}
-
-    ~fornode() { delete init, cond, upd, bdy; }
+    Node *init;
+    Node *cond;
+    Node *update;
+    Node *body;
+    ForNode(Node *i, Node *c, Node *u, Node *b)
+        : Node(NodeType::FORSTMT), init(i), cond(c), update(u), body(b) {}
+    ~ForNode() { delete init; delete cond; delete update; delete body; }
 };
 
-class blocknode : public node {
+class BlockNode : public Node {
 public:
-    node *arr[100];
-    int cnt;
-
-    blocknode() : node(nodetype::blck), cnt(0) {}
-
-    void add(node *n) { arr[cnt++] = n; }
-
-    ~blocknode() {
-        for (int i = 0; i < cnt; i++) delete arr[i];
-    }
+    Node* stmts[100];
+    int count;
+    BlockNode() : Node(NodeType::BLOCK), count(0) {}
+    void add(Node* n) { stmts[count++] = n; }
+    ~BlockNode() { for (int i = 0; i < count; i++) delete stmts[i]; }
 };
 
-class printnode : public node {
+class PrintNode : public Node {
 public:
-    node *expr;
-    printnode(node *e) : node(nodetype::print), expr(e) {}
-    ~printnode() { delete expr; }
+    Node* expr;
+    PrintNode(Node* e) : Node(NodeType::PRINT), expr(e) {}
+    ~PrintNode() { delete expr; }
 };
 
 class Parser
