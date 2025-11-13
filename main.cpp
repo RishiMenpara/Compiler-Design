@@ -1,167 +1,181 @@
 #include <iostream>
 #include <string>
 #include <stdexcept>
-#include <map>
+#include <cctype>
 using namespace std;
 
-enum class TokenType
-{
-    number,
-    plus,
-    minus,
-    mul,
-    div,
-    mod,
-    assign,
-    identifier,
-    lparen,
-    rparen,
-    end_of_file
+enum class token_typ {
+    number, plus, minus, multi, divison, mod,
+    assign, iden, print,
+    lparen, rparen, lbrace, rbrace,
+    less, greater,
+    If, Else, For,
+    semi, end
 };
 
-struct Token
-{
-    TokenType type;
-    string value;
+struct token {
+    token_typ type;
+    string val;
 };
 
-class Lexer
-{
-private:
-    string src;
-    int pos;
-
+class lexer {
 public:
-    Lexer(const string &source) : src(source), pos(0) {}
+    string source;
+    int posi;
 
-    Token getNextToken()
-    {
-        while (pos < src.size())
-        {
-            char current = src[pos];
-            if (isspace(current))
-            {
-                pos++;
+    lexer(string s) {
+        source = s;
+        posi = 0;
+    }
+
+    token gettoken() {
+        while (posi < source.size()) {
+            char c = source[posi];
+
+            if (isspace(c)) {
+                posi++;
                 continue;
             }
 
-            if (isalpha(current))
-            {
-                string id;
-                while (pos < src.size() && isalnum(src[pos]))
-                    id.push_back(src[pos++]);
-                return {TokenType::identifier, id};
-            }
-
-            if (isdigit(current) || current == '.')
-            {
-                string num;
-                bool hasDot = false;
-                while (pos < src.size() && (isdigit(src[pos]) || src[pos] == '.'))
-                {
-                    if (src[pos] == '.')
-                    {
-                        if (hasDot)
-                            break;
-                        hasDot = true;
-                    }
-                    num.push_back(src[pos++]);
+            if (isalpha(c)) {
+                string id = "";
+                while (posi < source.size() && isalnum(source[posi])) {
+                    id += source[posi++];
                 }
-                return {TokenType::number, num};
+                if (id == "if") return {token_typ::If, id};
+                if (id == "else") return {token_typ::Else, id};
+                if (id == "for") return {token_typ::For, id};
+                if (id == "print") return {token_typ::print, id};
+                return {token_typ::iden, id};
             }
 
-            pos++;
-            switch (current)
-            {
-            case '+':
-                return {TokenType::plus, "+"};
-            case '-':
-                return {TokenType::minus, "-"};
-            case '*':
-                return {TokenType::mul, "*"};
-            case '/':
-                return {TokenType::div, "/"};
-            case '%':
-                return {TokenType::mod, "%"};
-            case '(':
-                return {TokenType::lparen, "("};
-            case ')':
-                return {TokenType::rparen, ")"};
-            case '=':
-                return {TokenType::assign, "="};
-            default:
-                cout << "Unexpected character: " << current << "\n";
+            if (isdigit(c) || c == '.') {
+                string num = "";
+                bool dot = false;
+                while (posi < source.size() &&
+                       (isdigit(source[posi]) || source[posi] == '.')) {
+                    if (source[posi] == '.') {
+                        if (dot) break;
+                        dot = true;
+                    }
+                    num += source[posi++];
+                }
+                return {token_typ::number, num};
             }
+
+            posi++;
+
+            if (c == '+') return {token_typ::plus, "+"};
+            if (c == '-') return {token_typ::minus, "-"};
+            if (c == '*') return {token_typ::multi, "*"};
+            if (c == '/') return {token_typ::divison, "/"};
+            if (c == '%') return {token_typ::mod, "%"};
+            if (c == '(') return {token_typ::lparen, "("};
+            if (c == ')') return {token_typ::rparen, ")"};
+            if (c == '{') return {token_typ::lbrace, "{"};
+            if (c == '}') return {token_typ::rbrace, "}"};
+            if (c == '=') return {token_typ::assign, "="};
+            if (c == ';') return {token_typ::semi, ";"};
+            if (c == '<') return {token_typ::less, "<"};
+            if (c == '>') return {token_typ::greater, ">"};
+
+            cout << "Unknown character: " << c << endl;
         }
-        return {TokenType::end_of_file, ""};
+        return {token_typ::end, ""};
     }
 };
 
-enum class NodeType
-{
-    number,
-    binop,
-    assign,
-    variable
+enum class nodetype {
+    numbr, varibl, binop, assign,
+    ifstm, forstm, blck, print
 };
 
-class BaseNode
-{
-protected:
-    NodeType nodetype;
-
+class node {
 public:
-    BaseNode(NodeType type) : nodetype(type) {}
-    virtual ~BaseNode() = default;
-    NodeType getType() const { return nodetype; }
+    nodetype type;
+    node(nodetype t) { type = t; }
+    virtual ~node() {}
 };
 
-class NumNode : public BaseNode
-{
-    double value;
-
+class numbnode : public node {
 public:
-    NumNode(double v) : BaseNode(NodeType::number), value(v) {}
-    double getValue() const { return value; }
+    double n;
+    numbnode(double x) : node(nodetype::numbr) { n = x; }
 };
 
-class VarNode : public BaseNode
-{
+class varinode : public node {
+public:
     string name;
-
-public:
-    VarNode(const string &n) : BaseNode(NodeType::variable), name(n) {}
-    string getName() const { return name; }
+    varinode(string n) : node(nodetype::varibl) { name = n; }
 };
 
-class BinOpNode : public BaseNode
-{
-    BaseNode *left;
-    Token op;
-    BaseNode *right;
-
+class binopnode : public node {
 public:
-    BinOpNode(BaseNode *l, Token o, BaseNode *r): BaseNode(NodeType::binop), left(l), op(o), right(r) {}
-    BaseNode *getLeft() const { return left; }
-    BaseNode *getRight() const { return right; }
-    Token getOp() const { return op; }
-    ~BinOpNode() override
-    {
-        delete left;
-        delete right;
+    node *l;
+    node *r;
+    token op;
+
+    binopnode(node *a, token o, node *b)
+        : node(nodetype::binop), l(a), op(o), r(b) {}
+
+    ~binopnode() { delete l, r; }
+};
+
+class assignnode : public node {
+public:
+    string name;
+    node *expr;
+
+    assignnode(string n, node *e)
+        : node(nodetype::assign), name(n), expr(e) {}
+
+    ~assignnode() { delete expr; }
+};
+
+class ifnode : public node {
+public:
+    node *cond;
+    node *thenstm;
+    node *elsstm;
+
+    ifnode(node *c, node *t, node *e)
+        : node(nodetype::ifstm), cond(c), thenstm(t), elsstm(e) {}
+
+    ~ifnode() { delete cond, thenstm; if (elsstm) delete elsstm; }
+};
+
+class fornode : public node {
+public:
+    node *init;
+    node *cond;
+    node *upd;
+    node *bdy;
+
+    fornode(node *i, node *c, node *u, node *b)
+        : node(nodetype::forstm), init(i), cond(c), upd(u), bdy(b) {}
+
+    ~fornode() { delete init, cond, upd, bdy; }
+};
+
+class blocknode : public node {
+public:
+    node *arr[100];
+    int cnt;
+
+    blocknode() : node(nodetype::blck), cnt(0) {}
+
+    void add(node *n) { arr[cnt++] = n; }
+
+    ~blocknode() {
+        for (int i = 0; i < cnt; i++) delete arr[i];
     }
 };
 
-class AssignNode : public BaseNode
-{
-    string varName;
-    BaseNode *expr;
-
+class printnode : public node {
 public:
-    AssignNode(const string &n, BaseNode *e): BaseNode(NodeType::assign), varName(n), expr(e) {}
-    string getVarName() const { return varName; }
-    BaseNode *getExpr() const { return expr; }
-    ~AssignNode() override { delete expr; }
+    node *expr;
+    printnode(node *e) : node(nodetype::print), expr(e) {}
+    ~printnode() { delete expr; }
 };
 
 class Parser
