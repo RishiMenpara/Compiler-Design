@@ -24,7 +24,7 @@ The Mini Compiler supports:
 
 ---
 
-## **Rishi – Lexer Class**
+## **Rishi Menpara (202411062) – Lexer Class**
 
 ### **Key Contributions**
 - Developed the complete **Lexer** responsible for converting raw source code into tokens.
@@ -43,7 +43,7 @@ The Mini Compiler supports:
 
 ---
 
-## **Harpil – Parser Class**
+## **Harpil Patel (202411070) – Parser Class**
 
 ### **Key Contributions**
 - Implemented a complete **Recursive-Descent Parser**.
@@ -66,7 +66,7 @@ The Mini Compiler supports:
 
 ---
 
-## **Tirth – Value Class, Variable Table, Main Program**
+## **Tirth Manavadariya (202411075) – Value Class, Variable Table, Main Program**
 
 ### **Key Contributions**
 - Implemented the **Value** class supporting runtime arithmetic:
@@ -88,7 +88,7 @@ The Mini Compiler supports:
 
 ---
 
-## **Jinit – Interpreter Class**
+## **Jinit Ponkiya (202411075) – Interpreter Class**
 
 ### **Key Contributions**
 - Implemented the **Interpreter** using AST traversal.
